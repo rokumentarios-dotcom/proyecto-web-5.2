@@ -17,7 +17,7 @@ TURSO_TOKEN = st.secrets.get("TURSO_AUTH_TOKEN", os.getenv("TURSO_AUTH_TOKEN", "
 def obtener_conexion():
     """Retorna una conexión activa a Turso (en la nube) o SQLite (en local)."""
     if TURSO_URL and TURSO_TOKEN:
-        return libsql_client.create_client_sync(url=TURSO_URL, auth_token=TURSO_TOKEN)
+        return libsql.connect(database=TURSO_URL, auth_token=TURSO_TOKEN)
     else:
         return sqlite3.connect("clientes_streaming.db")
         
