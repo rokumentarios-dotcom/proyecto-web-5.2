@@ -6,7 +6,7 @@ import urllib.parse
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
-import libsql_client  # <--- Agregada
+import libsql_experimental  # <--- Agregada
 
 # ==========================================
 # CONFIGURACIÓN DE BASE DE DATOS (Nube / Local)
