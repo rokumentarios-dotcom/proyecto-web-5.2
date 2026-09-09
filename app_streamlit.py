@@ -27,19 +27,25 @@ def ejecutar_consulta(query, parametros=None):
     if TURSO_URL and TURSO_TOKEN:
         resultado = conexion.execute(query, parametros or [])
         if query.strip().upper().startswith("SELECT"):
-            filas = resultado.rows
-            columnas = [col.name for col in resultado.columns]
+            # Obtenemos las filas y columnas adaptadas al cliente oficial de libsql
+            filas = resultado.fetchall()
+            columnas = [col[0] for col in resultado.description]
+            conexion.close()
             return pd.DataFrame(filas, columns=columnas)
         else:
+            conexion.commit()
+            conexion.close()
             return True
     else:
+        # Bloque para SQLite local (si aplica en tu lógica)
+        cursor = conexion.cursor()
+        cursor.execute(query, parametros or [])
         if query.strip().upper().startswith("SELECT"):
-            df = pd.read_sql(query, conexion, params=parametros)
+            filas = cursor.fetchall()
+            columnas = [col[0] for col in cursor.description]
             conexion.close()
-            return df
+            return pd.DataFrame(filas, columns=columnas)
         else:
-            cursor = conexion.cursor()
-            cursor.execute(query, parametros or [])
             conexion.commit()
             conexion.close()
             return True
