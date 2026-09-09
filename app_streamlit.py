@@ -608,7 +608,7 @@ with st.sidebar:
                 except Exception as e:
                     st.error(f"Error al purgar registros: {e}")
 
-       with st.expander("👥 Operadores y Roles"):
+     with st.expander("👥 Operadores y Roles"):
     st.markdown("##### ➕ Crear Cuenta")
     with st.form("form_nuevo_op"):
         nuevo_user = st.text_input("Usuario")
