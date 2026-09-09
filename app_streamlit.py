@@ -608,111 +608,82 @@ with st.sidebar:
                 except Exception as e:
                     st.error(f"Error al purgar registros: {e}")
 
-        with st.expander("👥 Operadores y Roles"):
-            st.markdown("##### ➕ Crear Cuenta")
-            with st.form("form_nuevo_op"):
-                nuevo_user = st.text_input("Usuario")
-                nuevo_pass = st.text_input("Contraseña", type="password")
-                nuevo_rol = st.selectbox("Rol", ["operador", "supervisor", "admin"])
-                if st.form_submit_button("Crear"):
-                    if nuevo_user and nuevo_pass:
+       with st.expander("👥 Operadores y Roles"):
+    st.markdown("##### ➕ Crear Cuenta")
+    with st.form("form_nuevo_op"):
+        nuevo_user = st.text_input("Usuario")
+        nuevo_pass = st.text_input("Contraseña", type="password")
+        nuevo_rol = st.selectbox("Rol", ["operador", "supervisor", "admin"])
+        if st.form_submit_button("Crear"):
+            if nuevo_user and nuevo_pass:
+                try:
+                    ejecutar_consulta(
+                        "INSERT INTO usuarios (username, password, rol) VALUES (?, ?, ?)",
+                        (nuevo_user, nuevo_pass, nuevo_rol)
+                    )
+                    registrar_auditoria(usuario_actual, "CREAR_USUARIO", f"Creado usuario {nuevo_user} con rol {nuevo_rol}")
+                    st.success(f"Creado: {nuevo_user} ({nuevo_rol})")
+                    st.rerun()
+                except Exception as e:
+                    st.error("El usuario ya existe o hubo un error.")
+            else:
+                st.error("Llena todos los campos.")
+
+    st.markdown("##### ✏️ Editar Cuentas")
+    df_ops = ejecutar_consulta("SELECT id, username, rol FROM usuarios")
+    lista_ops = df_ops.values.tolist() if not df_ops.empty else []
+
+    ops_dict = {f"{op[1]} ({str(op[2]).upper()})": op[0] for op in lista_ops}
+    op_seleccionado = st.selectbox(
+        "Selecciona cuenta", list(ops_dict.keys()) if ops_dict else ["No hay usuarios"]
+    )
+
+    if op_seleccionado and op_seleccionado != "No hay usuarios":
+        op_id_sel = ops_dict[op_seleccionado]
+        df_u = ejecutar_consulta(
+            "SELECT username, password, rol FROM usuarios WHERE id = ?",
+            (op_id_sel,)
+        )
+        u_data = (df_u.iloc[0, 0], df_u.iloc[0, 1], df_u.iloc[0, 2]) if not df_u.empty else None
+
+        if u_data:
+            with st.form("form_edit_op"):
+                e_user_op = st.text_input("Usuario", value=u_data[0])
+                e_pass_op = st.text_input("Contraseña", value=u_data[1])
+                roles_validos = ["admin", "supervisor", "operador"]
+                try:
+                    default_idx = roles_validos.index(u_data[2])
+                except ValueError:
+                    default_idx = 2
+                
+                e_rol_op = st.selectbox("Rol", roles_validos, index=default_idx)
+
+                c_eo1, c_eo2 = st.columns(2)
+                with c_eo1:
+                    if st.form_submit_button("💾 Guardar"):
                         try:
-                            conn = sqlite3.connect("clientes_streaming.db")
-                            cursor = conn.cursor()
-                            cursor.execute(
-                                "INSERT INTO usuarios (username, password, rol) VALUES (?, ?, ?)",
-                                (nuevo_user, nuevo_pass, nuevo_rol),
+                            ejecutar_consulta(
+                                "UPDATE usuarios SET username = ?, password = ?, rol = ? WHERE id = ?",
+                                (e_user_op, e_pass_op, e_rol_op, op_id_sel)
                             )
-                            conn.commit()
-                            conn.close()
-                            registrar_auditoria(usuario_actual, "CREAR_USUARIO", f"Creado usuario {nuevo_user} con rol {nuevo_rol}")
-                            st.success(f"Creado: {nuevo_user} ({nuevo_rol})")
+                            registrar_auditoria(usuario_actual, "EDITAR_USUARIO", f"Modificado usuario ID {op_id_sel}")
+                            st.success("¡Actualizado!")
                             st.rerun()
-                        except:
-                            st.error("El usuario ya existe.")
-                    else:
-                        st.error("Llena todos los campos.")
-
-            st.markdown("##### ✏️ Editar Cuentas")
-            conn = sqlite3.connect("clientes_streaming.db")
-            cursor = conn.cursor()
-            cursor.execute("SELECT id, username, rol FROM usuarios")
-            lista_ops = cursor.fetchall()
-            conn.close()
-
-            ops_dict = {f"{op[1]} ({op[2].upper()})": op[0] for op in lista_ops}
-            op_seleccionado = st.selectbox(
-                "Selecciona cuenta", list(ops_dict.keys())
-            )
-
-            if op_seleccionado:
-                op_id_sel = ops_dict[op_seleccionado]
-                conn = sqlite3.connect("clientes_streaming.db")
-                cursor = conn.cursor()
-                cursor.execute(
-                    "SELECT username, password, rol FROM usuarios WHERE id = ?",
-                    (op_id_sel,),
-                )
-                u_data = cursor.fetchone()
-                conn.close()
-
-                if u_data:
-                    with st.form("form_edit_op"):
-                        e_user_op = st.text_input(
-                            "Usuario", value=u_data[0]
-                        )
-                        e_pass_op = st.text_input(
-                            "Contraseña", value=u_data[1]
-                        )
-                        e_rol_op = st.selectbox(
-                            "Rol",
-                            ["admin", "supervisor", "operador"],
-                            index=["admin", "supervisor", "operador"].index(u_data[2]) if u_data[2] in ["admin", "supervisor", "operador"] else 2,
-                        )
-
-                        c_eo1, c_eo2 = st.columns(2)
-                        with c_eo1:
-                            if st.form_submit_button("💾 Guardar"):
-                                try:
-                                    conn = sqlite3.connect(
-                                        "clientes_streaming.db"
-                                    )
-                                    cursor = conn.cursor()
-                                    cursor.execute(
-                                        "UPDATE usuarios SET username = ?, password = ?, rol = ? WHERE id = ?",
-                                        (
-                                            e_user_op,
-                                            e_pass_op,
-                                            e_rol_op,
-                                            op_id_sel,
-                                        ),
-                                    )
-                                    conn.commit()
-                                    conn.close()
-                                    registrar_auditoria(usuario_actual, "EDITAR_USUARIO", f"Modificado usuario ID {op_id_sel}")
-                                    st.success("¡Actualizado!")
-                                    st.rerun()
-                                except Exception as e:
-                                    st.error(f"Error: {e}")
-                        with c_eo2:
-                            if st.form_submit_button("🗑️ Borrar"):
-                                if u_data[0] == "admin":
-                                    st.error("No puedes eliminar al admin principal.")
-                                else:
-                                    conn = sqlite3.connect(
-                                        "clientes_streaming.db"
-                                    )
-                                    cursor = conn.cursor()
-                                    cursor.execute(
-                                        "DELETE FROM usuarios WHERE id = ?",
-                                        (op_id_sel,),
-                                    )
-                                    conn.commit()
-                                    conn.close()
-                                    registrar_auditoria(usuario_actual, "BORRAR_USUARIO", f"Eliminado usuario ID {op_id_sel}")
-                                    st.success("Eliminado.")
-                                    st.rerun()
-
+                        except Exception as e:
+                            st.error(f"Error: {e}")
+                with c_eo2:
+                    if st.form_submit_button("🗑️ Borrar"):
+                        if u_data[0] == "admin":
+                            st.error("No puedes eliminar al admin principal.")
+                        else:
+                            ejecutar_consulta(
+                                "DELETE FROM usuarios WHERE id = ?",
+                                (op_id_sel,)
+                            )
+                            registrar_auditoria(usuario_actual, "BORRAR_USUARIO", f"Eliminado usuario ID {op_id_sel}")
+                            st.success("Eliminado.")
+                            st.rerun()
+                            
 # --- INTERFAZ PRINCIPAL ---
 st.title("📺 FULLSTREAM - ClientControl (v6.2.2)")
 st.markdown("##### Sistema Profesional de Gestión de Suscriptores con CRM Inteligente y Auditoría")
